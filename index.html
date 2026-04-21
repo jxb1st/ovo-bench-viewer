@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OVO-Bench Dataset Viewer</title>
+<style>
+:root {
+  --bg: #0f1419;
+  --panel: #1a2129;
+  --border: #2d3640;
+  --text: #e6e9ed;
+  --muted: #8a949e;
+  --accent: #4dabf7;
+  --good: #51cf66;
+  --bad: #ff6b6b;
+  --highlight: #ffd43b;
+  --purple: #b197fc;
+  --orange: #ffa94d;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+header {
+  padding: 12px 20px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+header h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--accent);
+}
+header h1 .subtitle {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 400;
+  margin-left: 8px;
+  letter-spacing: 0.3px;
+}
+.control { display: flex; align-items: center; gap: 6px; }
+.control label { color: var(--muted); font-size: 12px; }
+select, input, button {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: 13px;
+  border-radius: 4px;
+}
+button { cursor: pointer; }
+button:hover:not(:disabled) { background: var(--border); }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+input[type=number] { width: 80px; }
+.banner {
+  background: rgba(77, 171, 247, 0.08);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 20px;
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.banner strong { color: var(--text); }
+.banner a { color: var(--accent); text-decoration: none; }
+.banner a:hover { text-decoration: underline; }
+.back-link { font-weight: 500; }
+.video-missing {
+  padding: 40px;
+  text-align: center;
+  color: var(--muted);
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+}
+
+main {
+  display: grid;
+  grid-template-columns: 400px 1fr;
+  gap: 16px;
+  padding: 16px;
+  max-width: 100%;
+}
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+  overflow: hidden;
+}
+.panel h2 {
+  margin: 0 0 12px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.field {
+  margin-bottom: 12px;
+}
+.field-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.field-value {
+  font-size: 14px;
+  word-break: break-word;
+}
+.field-value.code {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 12px;
+  background: var(--bg);
+  padding: 6px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  color: var(--accent);
+}
+video {
+  width: 100%;
+  max-height: 540px;
+  background: #000;
+  border-radius: 4px;
+}
+.video-placeholder {
+  width: 100%;
+  min-height: 240px;
+  background: #000;
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--bad);
+  font-size: 13px;
+  text-align: center;
+  padding: 20px;
+  gap: 8px;
+}
+.task-content {
+  grid-column: 1 / -1;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 20px;
+}
+.task-content h2 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+}
+.task-content h2:not(:first-of-type) { margin-top: 24px; }
+
+.option-list { list-style: none; padding: 0; margin: 0; }
+.option-list li {
+  padding: 10px 14px;
+  margin: 4px 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 14px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.option-list li.correct {
+  background: rgba(81, 207, 102, 0.12);
+  border-color: var(--good);
+}
+.option-list .opt-letter {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-weight: 700;
+  color: var(--muted);
+  flex-shrink: 0;
+  width: 24px;
+}
+.option-list .correct .opt-letter { color: var(--good); }
+.option-list .opt-text { flex: 1; }
+.option-list .opt-badge {
+  color: var(--good);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.task-desc {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  background: var(--bg);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 4px 4px 0;
+}
+.category-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-right: 8px;
+}
+.pill-backward { background: rgba(255, 169, 77, 0.15); color: var(--orange); border: 1px solid rgba(255, 169, 77, 0.4); }
+.pill-realtime { background: rgba(77, 171, 247, 0.15); color: var(--accent); border: 1px solid rgba(77, 171, 247, 0.4); }
+.pill-forward  { background: rgba(177, 151, 252, 0.15); color: var(--purple); border: 1px solid rgba(177, 151, 252, 0.4); }
+
+.probe-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 12px;
+}
+.probe-table th, .probe-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.probe-table th {
+  color: var(--muted);
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  background: var(--bg);
+}
+.probe-table tr.active {
+  background: rgba(77, 171, 247, 0.08);
+}
+.probe-table tr.active td { border-bottom-color: var(--accent); }
+.probe-table td .gt-yes { color: var(--good); font-weight: 700; }
+.probe-table td .gt-no  { color: var(--bad); font-weight: 700; }
+
+.timeline-wrap { margin: 16px 0 4px; }
+.timeline {
+  position: relative;
+  height: 32px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.timeline-fill {
+  position: absolute;
+  top: 0; bottom: 0;
+  background: linear-gradient(90deg, rgba(81, 207, 102, 0.35), rgba(81, 207, 102, 0.55));
+  border-left: 2px solid var(--good);
+  border-right: 2px solid var(--good);
+}
+.timeline-marker {
+  position: absolute;
+  top: -4px; bottom: -4px;
+  width: 2px;
+  background: var(--highlight);
+}
+.timeline-marker.ask { background: var(--accent); }
+.timeline-marker.clue { background: var(--highlight); }
+.timeline-probe {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(0,0,0,0.4);
+}
+.timeline-probe.t0 { background: var(--orange); }
+.timeline-probe.t1 { background: var(--good); }
+.timeline-probe.active { outline: 2px solid var(--highlight); outline-offset: 2px; }
+.timeline-label {
+  font-size: 11px;
+  color: var(--muted);
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+.legend-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.legend-row .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.legend-row .swatch {
+  width: 10px; height: 10px; border-radius: 50%;
+  border: 1px solid rgba(0,0,0,0.4);
+}
+.legend-row .swatch-line {
+  width: 12px; height: 2px;
+}
+.note {
+  margin: 8px 0;
+  font-size: 12px;
+  color: var(--muted);
+  font-style: italic;
+}
+.error-msg {
+  background: rgba(255, 107, 107, 0.12);
+  border: 1px solid var(--bad);
+  color: var(--bad);
+  padding: 12px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+.error-msg code {
+  background: rgba(255, 107, 107, 0.15);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+.stats-panel, .prompt-panel {
+  grid-column: 1 / -1;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px 20px;
+}
+.stats-panel h2, .prompt-panel h2 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.stats-summary {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--muted);
+  font-family: "SFMono-Regular", Consolas, monospace;
+}
+.stats-summary b {
+  color: var(--text);
+  font-weight: 600;
+  margin-left: 3px;
+}
+.histogram {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.hist-row {
+  display: grid;
+  grid-template-columns: 92px 1fr 120px;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-family: "SFMono-Regular", Consolas, monospace;
+}
+.hist-label { color: var(--muted); text-align: right; }
+.hist-bar-wrap {
+  height: 18px;
+  background: var(--bg);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.hist-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #74c0fc);
+  min-width: 0;
+  transition: width 0.25s ease;
+}
+.hist-bar.orange { background: linear-gradient(90deg, var(--orange), #ffc078); }
+.hist-bar.purple { background: linear-gradient(90deg, var(--purple), #d0bfff); }
+.hist-bar.highlight { background: linear-gradient(90deg, var(--highlight), #ffe066); }
+.hist-count { color: var(--text); }
+.hist-count .hist-pct { color: var(--muted); font-size: 11px; margin-left: 4px; }
+.hist-row.current .hist-label { color: var(--highlight); }
+.hist-row.current .hist-bar { background: linear-gradient(90deg, var(--highlight), #ffe066); }
+
+.prompt-panel h2 code {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+  color: var(--accent);
+  background: var(--bg);
+  padding: 1px 6px;
+  border-radius: 3px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.prompt-block {
+  margin-top: 14px;
+}
+.prompt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.prompt-label {
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 600;
+}
+.prompt-stats {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+  color: var(--muted);
+}
+.prompt-stats b {
+  color: var(--text);
+  font-weight: 600;
+  margin: 0 2px;
+}
+.prompt-text {
+  margin: 0;
+  padding: 12px 14px;
+  background: #0a0d11;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 12px;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.5;
+  max-height: 460px;
+  overflow-y: auto;
+}
+.prompt-text .esc {
+  color: var(--muted);
+  background: rgba(138, 148, 158, 0.12);
+  padding: 0 3px;
+  border-radius: 2px;
+  font-size: 10px;
+  margin: 0 1px;
+}
+.kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  font-family: monospace;
+  font-size: 11px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+}
+.meta-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+.meta-chip {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 3px 8px;
+  border-radius: 3px;
+}
+.meta-chip b { color: var(--text); font-weight: 600; margin-left: 3px; }
+</style>
+</head>
+<body>
+<div class="banner" id="banner">
+  <a href="https://jxb1st.github.io/datasets/" class="back-link">&larr; Dataset panel</a>
+  <span>Showing a <strong>24-sample</strong> representative subset (2 per task × 12 tasks). Full benchmark: 1640 samples — see
+    <a href="https://github.com/JoeLeelyf/OVO-Bench" target="_blank">OVO-Bench</a>.
+  </span>
+</div>
+<header>
+  <h1>OVO-Bench Viewer <span class="subtitle">online video understanding benchmark</span></h1>
+  <div class="control">
+    <label>Task</label>
+    <select id="task-select"></select>
+  </div>
+  <div class="control">
+    <label>Sample</label>
+    <input type="number" id="sample-input" min="0" value="0">
+    <span id="sample-counter" style="color:var(--muted);font-size:12px;">/ 0</span>
+  </div>
+  <div class="control">
+    <button id="prev-btn">&larr; Prev</button>
+    <button id="next-btn">Next &rarr;</button>
+  </div>
+  <div class="control" id="probe-control" style="display:none;">
+    <label>Probe</label>
+    <select id="probe-select"></select>
+  </div>
+  <div style="margin-left:auto;color:var(--muted);font-size:11px;">
+    <span class="kbd">&larr;</span> <span class="kbd">&rarr;</span> navigate
+  </div>
+</header>
+
+<main>
+  <aside class="panel" id="metadata-panel">
+    <h2>Metadata</h2>
+    <div id="metadata-fields"></div>
+  </aside>
+  <section class="panel" id="video-panel">
+    <h2>Video (chunked clip)</h2>
+    <div id="video-container"></div>
+  </section>
+  <section class="task-content" id="task-content"></section>
+  <section class="prompt-panel" id="prompt-panel"></section>
+  <section class="stats-panel" id="stats-panel"></section>
+</main>
+
+<script>
+(function() {
+  "use strict";
+
+  // ---------------- Task catalog (from constant.py + paper) ----------------
+  // cat: backward / realtime / forward
+  const TASKS = {
+    EPM: { cat: "backward", label: "EPM · Episodic Memory",           desc: "Backward Tracing. Recall a specific past event within the ongoing video (Ego4D-style)." },
+    ASI: { cat: "backward", label: "ASI · Action Sequence Identification", desc: "Backward Tracing. Identify what happens *after* a given action based on the already-seen portion of the video." },
+    HLD: { cat: "backward", label: "HLD · Hallucination Detection",   desc: "Backward Tracing. Detect when the question references something that never happened — correct answer is 'Unable to answer'." },
+    STU: { cat: "realtime", label: "STU · Spatial Understanding",     desc: "Real-time Visual Perception. Answer about the spatial configuration at the current timestamp." },
+    OJR: { cat: "realtime", label: "OJR · Object Recognition",        desc: "Real-time Visual Perception. Recognize an object currently visible at the probe timestamp." },
+    ATR: { cat: "realtime", label: "ATR · Attribute Recognition",     desc: "Real-time Visual Perception. Recognize an attribute (color, count, state, ...) at the current timestamp." },
+    ACR: { cat: "realtime", label: "ACR · Action Recognition",        desc: "Real-time Visual Perception. Classify the action unfolding at the probe timestamp." },
+    OCR: { cat: "realtime", label: "OCR · Optical Character Recognition", desc: "Real-time Visual Perception. Read text visible in the current frame." },
+    FPD: { cat: "realtime", label: "FPD · Future Prediction",         desc: "Real-time Visual Perception. Predict the immediate next action given what is happening right now." },
+    REC: { cat: "forward",  label: "REC · Repetition Event Count",    desc: "Forward Active Responding. Count repetitions of an activity. Probed at multiple timestamps — model must give the count seen so far." },
+    SSR: { cat: "forward",  label: "SSR · Sequential Step Recognition", desc: "Forward Active Responding. For a tutorial's sequential steps, decide if the person is currently performing the specified step (Yes/No)." },
+    CRR: { cat: "forward",  label: "CRR · Clue Reveal Responding",    desc: "Forward Active Responding. Decide whether the visual evidence up to the probe timestamp is sufficient to answer — type=0 before clue (expected 'No'), type=1 after (expected 'Yes')." },
+  };
+
+  // ---------------- Prompt templates (mirrors constant.py + utils/OVOBench.py:build_prompt) ----------------
+  function buildPrompt(task, sample, probeIdx) {
+    if (["EPM","ASI","HLD","STU","OJR","ATR","ACR","OCR","FPD"].indexOf(task) >= 0) {
+      const opts = sample.options.map((o, i) => String.fromCharCode(65+i) + ". " + o).join("; ") + ";";
+      return "\nQuestion: " + sample.question + "\nOptions:\n" + opts +
+        "\n\nRespond only with the letter corresponding to your chosen option (e.g., A, B, C). " +
+        "\nDo not include any additional text or explanation in your response.\n";
+    }
+    if (task === "REC") {
+      const q = "How many times did they " + sample.activity + "?";
+      return "\nYou're watching a video in which people may perform a certain type of action repetively. " +
+        "\nThe person performing this kind of action are referred to as 'they' in the following statement." +
+        "\nYou're task is to count how many times have different people in the video perform this kind of action in total." +
+        "\nOne complete motion counts as one. " +
+        "\nNow, answer the following question: " + q +
+        "\nProvide your answer as a single number (e.g., 0, 1, 2, 3\u2026) indicating the total count." +
+        "\nDo not include any additional text or explanation in your response.\n";
+    }
+    if (task === "SSR") {
+      const step = sample.test_info[probeIdx].step;
+      return "\nYou're watching a tutorial video which contain a sequential of steps. " +
+        "\nThe following is one step from the whole procedures: \n" +
+        step +
+        "\nYour task is to determine if the man or woman in the video is currently performing this step." +
+        "\nAnswer only with \u201cYes\u201d or \u201cNo\u201d." +
+        "\nDo not include any additional text or explanation in your response.\n";
+    }
+    if (task === "CRR") {
+      return "\nYou're responsible of answering questions based on the video content. " +
+        "\nThe following question are relevant to the latest frames, i.e. the end of the video." +
+        "\n" + sample.question +
+        "\nDecide whether existing visual content, especially latest frames, i.e. frames that near the end of the video, provide enough information for answering the question." +
+        "\nAnswer only with \u201cYes\u201d or \u201cNo\u201d." +
+        "\nDo not include any additional text or explanation in your response.\n";
+    }
+    return "";
+  }
+
+  // ---------------- State / constants ----------------
+  const BUCKETS = [
+    { lo: 0,    hi: 5,        label: "0-5s" },
+    { lo: 5,    hi: 10,       label: "5-10s" },
+    { lo: 10,   hi: 30,       label: "10-30s" },
+    { lo: 30,   hi: 60,       label: "30-60s" },
+    { lo: 60,   hi: 180,      label: "1-3m" },
+    { lo: 180,  hi: 600,      label: "3-10m" },
+    { lo: 600,  hi: 1800,     label: "10-30m" },
+    { lo: 1800, hi: Infinity, label: "30m+" },
+  ];
+
+  const ANNO_PATH = "data/ovo_bench_new.json";
+  const CLIP_BASE = "data/chunked_videos/";
+  const SRC_BASE  = "data/src_videos/";
+  const DURATIONS_PATH = "file_durations.json";
+
+  let allData = null;       // full annotation array
+  let byTask = {};          // task code -> list of samples
+  let durations = null;     // {"chunked_videos/<id>.mp4": seconds}
+
+  const state = {
+    task: "EPM",
+    sampleIdx: 0,
+    probeIdx: 0,
+  };
+
+  const $ = id => document.getElementById(id);
+
+  function escape(s) {
+    if (s == null) return "";
+    return String(s).replace(/[&<>"']/g, c => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[c]));
+  }
+
+  function fmtDuration(s) {
+    if (s == null || !isFinite(s)) return "-";
+    if (s < 60)   return s.toFixed(1) + "s";
+    if (s < 3600) return (s / 60).toFixed(1) + "m";
+    return (s / 3600).toFixed(2) + "h";
+  }
+  function bucketOf(d) {
+    for (let i = 0; i < BUCKETS.length; i++) {
+      if (d >= BUCKETS[i].lo && d < BUCKETS[i].hi) return i;
+    }
+    return BUCKETS.length - 1;
+  }
+  function computeStats(durs) {
+    if (!durs || durs.length === 0) return null;
+    const sorted = durs.slice().sort((a, b) => a - b);
+    const n = sorted.length;
+    const pick = q => sorted[Math.min(n - 1, Math.floor(n * q))];
+    const sum = sorted.reduce((a, b) => a + b, 0);
+    const counts = BUCKETS.map(() => 0);
+    sorted.forEach(d => counts[bucketOf(d)]++);
+    return {
+      n, sum,
+      min: sorted[0],
+      p25: pick(0.25),
+      median: pick(0.5),
+      p75: pick(0.75),
+      p90: pick(0.9),
+      max: sorted[n - 1],
+      mean: sum / n,
+      counts,
+    };
+  }
+
+  // ---------------- Clip path helpers ----------------
+  function clipPath(sample, probeIdx) {
+    // Forward tasks use {id}_{probeIdx}.mp4; others use {id}.mp4
+    if (["REC", "SSR", "CRR"].indexOf(sample.task) >= 0) {
+      return CLIP_BASE + sample.id + "_" + probeIdx + ".mp4";
+    }
+    return CLIP_BASE + sample.id + ".mp4";
+  }
+  function clipDuration(sample, probeIdx) {
+    if (!durations) return null;
+    const key = clipPath(sample, probeIdx).replace("data/", "");
+    return durations[key] ?? null;
+  }
+
+  // ---------------- Approximate token count ----------------
+  function approxTokens(s) {
+    const trimmed = s.trim();
+    return {
+      chars: s.length,
+      words: trimmed ? trimmed.split(/\s+/).length : 0,
+      bpe: Math.ceil(s.length / 4),
+      lines: s.split("\n").length,
+    };
+  }
+  function escapeWithNL(s) {
+    return escape(s).replace(/\n/g, '<span class="esc">\\n</span>\n');
+  }
+
+  // ---------------- Video rendering ----------------
+  function makeVideoElement(src, autoSeek) {
+    const v = document.createElement("video");
+    v.src = src;
+    v.controls = true;
+    v.preload = "metadata";
+    if (autoSeek != null) {
+      v.addEventListener("loadedmetadata", () => {
+        try { v.currentTime = parseFloat(autoSeek); } catch (e) {}
+      });
+    }
+    v.addEventListener("error", () => {
+      const ph = document.createElement("div");
+      ph.className = "video-missing";
+      ph.innerHTML =
+        '<div><b>Video not included in this subset</b></div>' +
+        '<div style="font-family:monospace;font-size:11px;margin-top:6px;">' + escape(src) + '</div>' +
+        '<div style="font-size:11px;margin-top:6px;max-width:380px;">Only 24 representative samples are hosted here to keep the viewer under the GitHub Pages quota.</div>';
+      v.replaceWith(ph);
+    });
+    return v;
+  }
+  function setVideo(container, src) {
+    container.innerHTML = "";
+    container.appendChild(makeVideoElement(src));
+  }
+
+  // ---------------- Field rendering ----------------
+  function field(label, value, isCode) {
+    return '<div class="field"><div class="field-label">' + escape(label) +
+      '</div><div class="field-value' + (isCode ? " code" : "") + '">' + value + "</div></div>";
+  }
+  function categoryPill(task) {
+    const cat = TASKS[task].cat;
+    const label = cat[0].toUpperCase() + cat.slice(1);
+    return '<span class="category-pill pill-' + cat + '">' + label + '</span>';
+  }
+
+  // ---------------- MCQ renderer (backward + realtime) ----------------
+  function renderMCQ(sample) {
+    const meta = [
+      field("ID", String(sample.id), true),
+      field("Task", categoryPill(sample.task) + '<b style="font-family:monospace;">' + escape(sample.task) + '</b> &middot; ' + escape(TASKS[sample.task].label.split(" · ")[1] || "")),
+      field("Source Video", escape(sample.video), true),
+      field("Clip Path", escape(clipPath(sample, 0)), true),
+      field("Probe Timestamp (realtime)", sample.realtime != null ? (sample.realtime + " s") : "-"),
+      field("Question", escape(sample.question)),
+      field("Correct Answer", '<span style="color:var(--good);font-weight:600;">' + escape(sample.answer) + "</span> " +
+        '<span style="color:var(--muted);">(option ' + String.fromCharCode(65 + sample.gt) + ")</span>"),
+    ].join("");
+    $("metadata-fields").innerHTML = meta;
+    setVideo($("video-container"), clipPath(sample, 0));
+
+    // Options list with GT highlight
+    const items = sample.options.map((opt, i) => {
+      const letter = String.fromCharCode(65 + i);
+      const ok = i === sample.gt;
+      return '<li class="' + (ok ? "correct" : "") + '">' +
+        '<span class="opt-letter">' + letter + '.</span>' +
+        '<span class="opt-text">' + escape(opt) + '</span>' +
+        (ok ? '<span class="opt-badge">&#10003; GT</span>' : '') +
+        '</li>';
+    }).join("");
+
+    $("task-content").innerHTML =
+      '<p class="task-desc">' + escape(TASKS[sample.task].desc) + "</p>" +
+      "<h2>Multiple-Choice Options</h2>" +
+      '<ul class="option-list">' + items + "</ul>";
+    hideProbeControl();
+  }
+
+  // ---------------- REC renderer ----------------
+  function renderREC(sample) {
+    setupProbeControl(sample.test_info.length, i => {
+      const ti = sample.test_info[i];
+      return "t=" + ti.realtime + "s · count=" + ti.count;
+    });
+    const probe = sample.test_info[state.probeIdx];
+
+    const segs = (sample.start_times || []).map((s, i) =>
+      "[" + s + ", " + (sample.end_times[i]) + "]").join(", ");
+
+    const meta = [
+      field("ID", String(sample.id), true),
+      field("Task", categoryPill(sample.task) + '<b style="font-family:monospace;">REC</b> &middot; Repetition Event Count'),
+      field("Source Video", escape(sample.video), true),
+      field("Clip Path", escape(clipPath(sample, state.probeIdx)), true),
+      field("Activity", '<b>' + escape(sample.activity) + '</b>'),
+      field("Occurrence Intervals (s)", escape(segs)),
+      field("Current Probe", (state.probeIdx + 1) + " / " + sample.test_info.length + " · t=" + probe.realtime + "s"),
+      field("Expected Count", '<span style="color:var(--good);font-weight:600;">' + probe.count + "</span>"),
+    ].join("");
+    $("metadata-fields").innerHTML = meta;
+    setVideo($("video-container"), clipPath(sample, state.probeIdx));
+
+    // Probe table
+    let rows = "";
+    sample.test_info.forEach((ti, i) => {
+      rows += '<tr class="' + (i === state.probeIdx ? "active" : "") + '">' +
+        "<td>" + (i + 1) + "</td>" +
+        "<td>" + ti.realtime + " s</td>" +
+        "<td><span class=\"gt-yes\">" + ti.count + "</span></td>" +
+        "<td>" + escape(clipPath(sample, i)) + "</td>" +
+        "</tr>";
+    });
+
+    $("task-content").innerHTML =
+      '<p class="task-desc">' + escape(TASKS.REC.desc) + "</p>" +
+      "<h2>Probe Timeline</h2>" +
+      renderRECTimeline(sample) +
+      "<h2>Probes &amp; Expected Counts</h2>" +
+      '<table class="probe-table"><thead><tr><th>#</th><th>Probe t</th><th>Count GT</th><th>Clip</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table>';
+  }
+
+  function renderRECTimeline(sample) {
+    const probeTimes = sample.test_info.map(ti => ti.realtime);
+    const maxT = Math.max(
+      probeTimes[probeTimes.length - 1] || 0,
+      ...(sample.end_times || [0])
+    ) * 1.05;
+    const segHTML = (sample.start_times || []).map((s, i) => {
+      const e = sample.end_times[i];
+      const left = (s / maxT) * 100;
+      const width = ((e - s) / maxT) * 100;
+      return '<div class="timeline-fill" style="left:' + left.toFixed(2) + '%;width:' + width.toFixed(2) + '%;"></div>';
+    }).join("");
+    const probeHTML = probeTimes.map((t, i) => {
+      const left = (t / maxT) * 100;
+      const cls = i === state.probeIdx ? " active" : "";
+      return '<div class="timeline-probe t1' + cls + '" style="left:' + left.toFixed(2) + '%;" title="probe ' + (i+1) + ' t=' + t + 's"></div>';
+    }).join("");
+    return '<div class="timeline-wrap">' +
+      '<div class="timeline">' + segHTML + probeHTML + "</div>" +
+      '<div class="timeline-label"><span>0 s</span><span>' + maxT.toFixed(1) + ' s</span></div>' +
+      '<div class="legend-row">' +
+      '<span class="chip"><span class="swatch-line" style="background:var(--good);"></span>activity interval</span>' +
+      '<span class="chip"><span class="swatch t1" style="background:var(--good);"></span>probe timestamp</span>' +
+      '</div></div>';
+  }
+
+  // ---------------- SSR renderer ----------------
+  function renderSSR(sample) {
+    setupProbeControl(sample.test_info.length, i => {
+      const ti = sample.test_info[i];
+      return "t=" + ti.realtime + "s · " + (ti.type === 1 ? "Yes" : "No");
+    });
+    const probe = sample.test_info[state.probeIdx];
+    const gtYes = probe.type === 1;
+
+    const steps = (sample.all_steps || []).map((s, i) =>
+      "<li><b>step " + (i+1) + ":</b> " + escape(s) +
+      '  <span style="color:var(--muted);">[' + sample.start_time[i] + ", " + sample.end_time[i] + "] s</span></li>"
+    ).join("");
+
+    const meta = [
+      field("ID", String(sample.id), true),
+      field("Task", categoryPill(sample.task) + '<b style="font-family:monospace;">SSR</b> &middot; Sequential Step Recognition'),
+      field("Source Video", escape(sample.video), true),
+      field("Clip Path", escape(clipPath(sample, state.probeIdx)), true),
+      field("Tutorial", '<b>' + escape(sample.tutorial) + '</b>'),
+      field("Queried Step", '<i>' + escape(probe.step) + '</i>'),
+      field("Current Probe", (state.probeIdx + 1) + " / " + sample.test_info.length + " · t=" + probe.realtime + "s"),
+      field("Expected Answer", (gtYes
+        ? '<span style="color:var(--good);font-weight:600;">Yes</span> (type=1, in step)'
+        : '<span style="color:var(--bad);font-weight:600;">No</span> (type=0, before step)')),
+    ].join("");
+    $("metadata-fields").innerHTML = meta;
+    setVideo($("video-container"), clipPath(sample, state.probeIdx));
+
+    let rows = "";
+    sample.test_info.forEach((ti, i) => {
+      const yn = ti.type === 1 ? "<span class=\"gt-yes\">Yes</span>" : "<span class=\"gt-no\">No</span>";
+      rows += '<tr class="' + (i === state.probeIdx ? "active" : "") + '">' +
+        "<td>" + (i + 1) + "</td>" +
+        "<td>" + ti.realtime + " s</td>" +
+        "<td>" + escape(ti.step) + "</td>" +
+        "<td>" + ti.type + "</td>" +
+        "<td>" + yn + "</td>" +
+        "</tr>";
+    });
+
+    $("task-content").innerHTML =
+      '<p class="task-desc">' + escape(TASKS.SSR.desc) + "</p>" +
+      "<h2>All Steps</h2><ol>" + steps + "</ol>" +
+      "<h2>Probe Timeline</h2>" + renderSSRTimeline(sample) +
+      "<h2>Probes &amp; Expected Yes/No</h2>" +
+      '<table class="probe-table"><thead><tr><th>#</th><th>t</th><th>Queried step</th><th>type</th><th>GT</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table>';
+  }
+
+  function renderSSRTimeline(sample) {
+    const probeTimes = sample.test_info.map(ti => ti.realtime);
+    const maxT = Math.max(
+      probeTimes[probeTimes.length - 1] || 0,
+      ...(sample.end_time || [0])
+    ) * 1.05;
+    const segHTML = (sample.start_time || []).map((s, i) => {
+      const e = sample.end_time[i];
+      const left = (s / maxT) * 100;
+      const width = ((e - s) / maxT) * 100;
+      return '<div class="timeline-fill" style="left:' + left.toFixed(2) + '%;width:' + width.toFixed(2) + '%;" title="step ' + (i+1) + '"></div>';
+    }).join("");
+    const probeHTML = sample.test_info.map((ti, i) => {
+      const left = (ti.realtime / maxT) * 100;
+      const cls = (ti.type === 1 ? "t1" : "t0") + (i === state.probeIdx ? " active" : "");
+      return '<div class="timeline-probe ' + cls + '" style="left:' + left.toFixed(2) + '%;" title="probe ' + (i+1) + ' t=' + ti.realtime + 's type=' + ti.type + '"></div>';
+    }).join("");
+    return '<div class="timeline-wrap">' +
+      '<div class="timeline">' + segHTML + probeHTML + "</div>" +
+      '<div class="timeline-label"><span>0 s</span><span>' + maxT.toFixed(1) + ' s</span></div>' +
+      '<div class="legend-row">' +
+      '<span class="chip"><span class="swatch-line" style="background:var(--good);"></span>step interval</span>' +
+      '<span class="chip"><span class="swatch t0" style="background:var(--orange);"></span>probe type=0 (No)</span>' +
+      '<span class="chip"><span class="swatch t1" style="background:var(--good);"></span>probe type=1 (Yes)</span>' +
+      '</div></div>';
+  }
+
+  // ---------------- CRR renderer ----------------
+  function renderCRR(sample) {
+    setupProbeControl(sample.test_info.length, i => {
+      const ti = sample.test_info[i];
+      return "t=" + ti.realtime + "s · " + (ti.type === 1 ? "Yes" : "No");
+    });
+    const probe = sample.test_info[state.probeIdx];
+    const gtYes = probe.type === 1;
+
+    const meta = [
+      field("ID", String(sample.id), true),
+      field("Task", categoryPill(sample.task) + '<b style="font-family:monospace;">CRR</b> &middot; Clue Reveal Responding'),
+      field("Source Video", escape(sample.video), true),
+      field("Clip Path", escape(clipPath(sample, state.probeIdx)), true),
+      field("Question", escape(sample.question)),
+      field("Final Answer (after clue)", escape(sample.answer)),
+      field("ask_time", sample.ask_time + " s"),
+      field("clue_time", sample.clue_time + " s"),
+      field("Current Probe", (state.probeIdx + 1) + " / " + sample.test_info.length + " · t=" + probe.realtime + "s"),
+      field("Expected Answer", gtYes
+        ? '<span style="color:var(--good);font-weight:600;">Yes</span> (type=1, clue revealed)'
+        : '<span style="color:var(--bad);font-weight:600;">No</span> (type=0, not enough evidence yet)'),
+    ].join("");
+    $("metadata-fields").innerHTML = meta;
+    setVideo($("video-container"), clipPath(sample, state.probeIdx));
+
+    let rows = "";
+    sample.test_info.forEach((ti, i) => {
+      const yn = ti.type === 1 ? "<span class=\"gt-yes\">Yes</span>" : "<span class=\"gt-no\">No</span>";
+      rows += '<tr class="' + (i === state.probeIdx ? "active" : "") + '">' +
+        "<td>" + (i + 1) + "</td>" +
+        "<td>" + ti.realtime + " s</td>" +
+        "<td>" + ti.type + "</td>" +
+        "<td>" + yn + "</td>" +
+        "</tr>";
+    });
+
+    $("task-content").innerHTML =
+      '<p class="task-desc">' + escape(TASKS.CRR.desc) + "</p>" +
+      "<h2>Probe Timeline</h2>" + renderCRRTimeline(sample) +
+      "<h2>Probes &amp; Expected Yes/No</h2>" +
+      '<table class="probe-table"><thead><tr><th>#</th><th>Probe t</th><th>type</th><th>GT</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table>';
+  }
+
+  function renderCRRTimeline(sample) {
+    const maxT = Math.max(
+      sample.clue_time * 1.2,
+      ...sample.test_info.map(ti => ti.realtime)
+    );
+    const askLeft = (sample.ask_time / maxT) * 100;
+    const clueLeft = (sample.clue_time / maxT) * 100;
+    const probeHTML = sample.test_info.map((ti, i) => {
+      const left = (ti.realtime / maxT) * 100;
+      const cls = (ti.type === 1 ? "t1" : "t0") + (i === state.probeIdx ? " active" : "");
+      return '<div class="timeline-probe ' + cls + '" style="left:' + left.toFixed(2) + '%;" title="probe ' + (i+1) + ' t=' + ti.realtime + 's type=' + ti.type + '"></div>';
+    }).join("");
+    // Shaded "clue available" band from clue_time to end
+    const clueBand = '<div class="timeline-fill" style="left:' + clueLeft.toFixed(2) + '%;width:' + (100 - clueLeft).toFixed(2) + '%;"></div>';
+    return '<div class="timeline-wrap">' +
+      '<div class="timeline">' + clueBand +
+      '<div class="timeline-marker ask" style="left:' + askLeft.toFixed(2) + '%;" title="ask_time"></div>' +
+      '<div class="timeline-marker clue" style="left:' + clueLeft.toFixed(2) + '%;" title="clue_time"></div>' +
+      probeHTML + "</div>" +
+      '<div class="timeline-label"><span>0 s</span><span>' + maxT.toFixed(1) + ' s</span></div>' +
+      '<div class="legend-row">' +
+      '<span class="chip"><span class="swatch-line" style="background:var(--accent);"></span>ask_time ' + sample.ask_time + 's</span>' +
+      '<span class="chip"><span class="swatch-line" style="background:var(--highlight);"></span>clue_time ' + sample.clue_time + 's</span>' +
+      '<span class="chip"><span class="swatch-line" style="background:var(--good);"></span>clue-available region</span>' +
+      '<span class="chip"><span class="swatch t0" style="background:var(--orange);"></span>type=0 probe (No)</span>' +
+      '<span class="chip"><span class="swatch t1" style="background:var(--good);"></span>type=1 probe (Yes)</span>' +
+      '</div></div>';
+  }
+
+  // ---------------- Probe controls ----------------
+  function setupProbeControl(numProbes, labelFn) {
+    const ctrl = $("probe-control");
+    const sel = $("probe-select");
+    sel.innerHTML = "";
+    for (let i = 0; i < numProbes; i++) {
+      const opt = document.createElement("option");
+      opt.value = i;
+      opt.textContent = (i + 1) + "/" + numProbes + " · " + labelFn(i);
+      sel.appendChild(opt);
+    }
+    if (state.probeIdx >= numProbes) state.probeIdx = 0;
+    sel.value = state.probeIdx;
+    ctrl.style.display = "flex";
+  }
+  function hideProbeControl() { $("probe-control").style.display = "none"; }
+
+  // ---------------- Prompt panel ----------------
+  function renderPromptPanel(sample) {
+    const task = sample.task;
+    const prompt = buildPrompt(task, sample, state.probeIdx);
+    const t = approxTokens(prompt);
+
+    let templateNote = "BR_PROMPT_TEMPLATE · constant.py:6-13";
+    if (task === "REC") templateNote = "REC_PROMPT_TEMPLATE · constant.py:24-32";
+    else if (task === "SSR") templateNote = "SSR_PROMPT_TEMPLATE · constant.py:43-50";
+    else if (task === "CRR") templateNote = "CRR_PROMPT_TEMPLATE · constant.py:53-60";
+
+    let html = '<h2>Exact Prompt · fed into <code>model.inference(video, prompt)</code></h2>';
+    html += '<p class="note">Built by <code>OVOBenchOffline.build_prompt</code> in <code>utils/OVOBench.py:126-141</code> using <code>' + templateNote + '</code>. Visual input (the chunked clip above) is passed separately to the model.</p>';
+    html += '<div class="prompt-block"><div class="prompt-header">' +
+      '<div class="prompt-label">' + escape(task) + ' prompt</div>' +
+      '<div class="prompt-stats">' +
+      'chars<b>' + t.chars + '</b>&middot; words<b>' + t.words + '</b>&middot; ~BPE<b>' + t.bpe + '</b>&middot; lines<b>' + t.lines + '</b>' +
+      '</div></div>' +
+      '<pre class="prompt-text">' + escapeWithNL(prompt) + '</pre></div>';
+
+    $("prompt-panel").innerHTML = html;
+  }
+
+  // ---------------- Stats panel ----------------
+  function renderStatsPanel(currentSample) {
+    // Left column: samples per task (global)
+    const taskOrder = Object.keys(TASKS);
+    const counts = taskOrder.map(t => byTask[t].length);
+    const maxCount = Math.max.apply(null, counts);
+    let taskHist = '<div class="histogram">';
+    taskOrder.forEach((t, i) => {
+      const c = counts[i];
+      const wpct = (c / maxCount * 100).toFixed(2);
+      const pct = (c / allData.length * 100).toFixed(1);
+      const cat = TASKS[t].cat;
+      const colorClass = cat === "backward" ? "orange" : cat === "forward" ? "purple" : "";
+      const hl = t === state.task ? " current" : "";
+      taskHist += '<div class="hist-row' + hl + '">' +
+        '<div class="hist-label">' + t + '</div>' +
+        '<div class="hist-bar-wrap"><div class="hist-bar ' + colorClass + '" style="width:' + wpct + '%"></div></div>' +
+        '<div class="hist-count">' + c + '<span class="hist-pct">(' + pct + '%)</span></div>' +
+        '</div>';
+    });
+    taskHist += '</div>';
+
+    // Right column: clip duration histogram for current task
+    let durHist = "";
+    if (!durations) {
+      durHist = '<p class="note"><code>file_durations.json</code> not found. Run <code>python compute_durations.py</code> to populate it.</p>';
+    } else {
+      const durs = [];
+      byTask[state.task].forEach(s => {
+        if (["REC","SSR","CRR"].indexOf(s.task) >= 0) {
+          s.test_info.forEach((_, i) => {
+            const d = clipDuration(s, i);
+            if (d != null) durs.push(d);
+          });
+        } else {
+          const d = clipDuration(s, 0);
+          if (d != null) durs.push(d);
+        }
+      });
+      const stats = computeStats(durs);
+      if (!stats) {
+        durHist = '<p class="note">No duration data yet for this task.</p>';
+      } else {
+        const currentDur = clipDuration(currentSample, state.probeIdx);
+        const maxC = Math.max.apply(null, stats.counts) || 1;
+        const currentBucket = currentDur != null ? bucketOf(currentDur) : -1;
+        durHist = '<div class="stats-summary">' +
+          '<span>n<b>' + stats.n + '</b></span>' +
+          '<span>min<b>' + fmtDuration(stats.min) + '</b></span>' +
+          '<span>median<b>' + fmtDuration(stats.median) + '</b></span>' +
+          '<span>mean<b>' + fmtDuration(stats.mean) + '</b></span>' +
+          '<span>p90<b>' + fmtDuration(stats.p90) + '</b></span>' +
+          '<span>max<b>' + fmtDuration(stats.max) + '</b></span>' +
+          '<span>total<b>' + fmtDuration(stats.sum) + '</b></span>' +
+          (currentDur != null ? '<span style="color:var(--highlight);">current<b style="color:var(--highlight);">' + fmtDuration(currentDur) + '</b></span>' : "") +
+          '</div>';
+        durHist += '<div class="histogram">';
+        stats.counts.forEach((c, i) => {
+          const wpct = (c / maxC * 100).toFixed(2);
+          const spct = stats.n ? (c / stats.n * 100).toFixed(1) : "0";
+          const hl = (i === currentBucket) ? " current" : "";
+          durHist += '<div class="hist-row' + hl + '">' +
+            '<div class="hist-label">' + BUCKETS[i].label + '</div>' +
+            '<div class="hist-bar-wrap"><div class="hist-bar" style="width:' + wpct + '%"></div></div>' +
+            '<div class="hist-count">' + c + '<span class="hist-pct">(' + spct + '%)</span></div>' +
+            '</div>';
+        });
+        durHist += '</div>';
+      }
+    }
+
+    // Global meta chips
+    const backTotal = ["EPM","ASI","HLD"].reduce((a,t)=>a+(byTask[t]||[]).length, 0);
+    const rtTotal = ["STU","OJR","ATR","ACR","OCR","FPD"].reduce((a,t)=>a+(byTask[t]||[]).length, 0);
+    const fwTotal = ["REC","SSR","CRR"].reduce((a,t)=>a+(byTask[t]||[]).length, 0);
+    const uniqueVideos = new Set(allData.map(d => d.video)).size;
+    const chips = '<div class="meta-chips">' +
+      '<span class="meta-chip">total samples<b>' + allData.length + '</b></span>' +
+      '<span class="meta-chip">unique source videos<b>' + uniqueVideos + '</b></span>' +
+      '<span class="meta-chip">Backward<b>' + backTotal + '</b></span>' +
+      '<span class="meta-chip">Realtime<b>' + rtTotal + '</b></span>' +
+      '<span class="meta-chip">Forward<b>' + fwTotal + '</b></span>' +
+      '<span class="meta-chip">12 task types</span>' +
+      '</div>';
+
+    $("stats-panel").innerHTML =
+      '<h2>Dataset Statistics</h2>' +
+      chips +
+      '<div class="stats-grid">' +
+        '<div><h2>Samples per task (highlighted: current)</h2>' + taskHist + '</div>' +
+        '<div><h2>Clip duration distribution · ' + escape(state.task) + '</h2>' + durHist + '</div>' +
+      '</div>';
+  }
+
+  // ---------------- Dispatch ----------------
+  function render() {
+    const samples = byTask[state.task];
+    if (!samples || samples.length === 0) {
+      $("metadata-fields").innerHTML = '<p class="note">No samples for task ' + escape(state.task) + '</p>';
+      $("video-container").innerHTML = "";
+      $("task-content").innerHTML = "";
+      $("prompt-panel").innerHTML = "";
+      $("stats-panel").innerHTML = "";
+      return;
+    }
+    if (state.sampleIdx < 0) state.sampleIdx = 0;
+    if (state.sampleIdx >= samples.length) state.sampleIdx = samples.length - 1;
+
+    $("sample-input").max = samples.length - 1;
+    $("sample-input").value = state.sampleIdx;
+    $("sample-counter").textContent = "/ " + (samples.length - 1);
+    $("prev-btn").disabled = state.sampleIdx === 0;
+    $("next-btn").disabled = state.sampleIdx === samples.length - 1;
+
+    const sample = samples[state.sampleIdx];
+
+    if (sample.task === "REC") renderREC(sample);
+    else if (sample.task === "SSR") renderSSR(sample);
+    else if (sample.task === "CRR") renderCRR(sample);
+    else renderMCQ(sample);
+
+    renderPromptPanel(sample);
+    renderStatsPanel(sample);
+  }
+
+  // ---------------- Init ----------------
+  async function loadAll() {
+    const res = await fetch(ANNO_PATH);
+    if (!res.ok) throw new Error("Failed to load " + ANNO_PATH + " (HTTP " + res.status + ")");
+    allData = await res.json();
+    byTask = {};
+    Object.keys(TASKS).forEach(t => byTask[t] = []);
+    allData.forEach(s => { if (byTask[s.task]) byTask[s.task].push(s); });
+
+    try {
+      const dres = await fetch(DURATIONS_PATH);
+      if (dres.ok) durations = await dres.json();
+    } catch (e) { /* optional */ }
+  }
+
+  async function init() {
+    try { await loadAll(); }
+    catch (err) {
+      $("metadata-fields").innerHTML =
+        '<div class="error-msg"><b>Failed to load annotations:</b><br>' + escape(err.message) + '</div>';
+      return;
+    }
+
+    // Populate task dropdown grouped by category
+    const taskSel = $("task-select");
+    const groups = [
+      { cat: "backward", label: "Backward Tracing" },
+      { cat: "realtime", label: "Real-time Visual Perception" },
+      { cat: "forward",  label: "Forward Active Responding" },
+    ];
+    groups.forEach(g => {
+      const og = document.createElement("optgroup");
+      og.label = g.label;
+      Object.keys(TASKS).forEach(t => {
+        if (TASKS[t].cat !== g.cat) return;
+        const opt = document.createElement("option");
+        opt.value = t;
+        opt.textContent = TASKS[t].label + " (n=" + (byTask[t] || []).length + ")";
+        og.appendChild(opt);
+      });
+      taskSel.appendChild(og);
+    });
+    taskSel.value = state.task;
+
+    taskSel.addEventListener("change", () => {
+      state.task = taskSel.value;
+      state.sampleIdx = 0;
+      state.probeIdx = 0;
+      render();
+    });
+    $("sample-input").addEventListener("change", () => {
+      state.sampleIdx = parseInt($("sample-input").value, 10) || 0;
+      state.probeIdx = 0;
+      render();
+    });
+    $("prev-btn").addEventListener("click", () => {
+      if (state.sampleIdx > 0) { state.sampleIdx--; state.probeIdx = 0; render(); }
+    });
+    $("next-btn").addEventListener("click", () => {
+      state.sampleIdx++; state.probeIdx = 0; render();
+    });
+    $("probe-select").addEventListener("change", () => {
+      state.probeIdx = parseInt($("probe-select").value, 10) || 0;
+      render();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA") return;
+      if (e.key === "ArrowLeft") { $("prev-btn").click(); }
+      else if (e.key === "ArrowRight") { $("next-btn").click(); }
+    });
+
+    render();
+  }
+  init();
+})();
+</script>
+</body>
+</html>
