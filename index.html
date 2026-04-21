@@ -619,6 +619,8 @@ video {
   let allData = null;       // full annotation array
   let byTask = {};          // task code -> list of samples
   let durations = null;     // {"chunked_videos/<id>.mp4": seconds}
+  let fullStats = null;     // full-dataset stats from full_dataset_stats.json
+  let fullStatsError = null;
 
   const state = {
     task: "EPM",
@@ -1030,15 +1032,21 @@ video {
 
   // ---------------- Stats panel ----------------
   function renderStatsPanel(currentSample) {
-    // Left column: samples per task (global)
+    // Left column: samples per task — prefer full-dataset counts when available.
     const taskOrder = Object.keys(TASKS);
-    const counts = taskOrder.map(t => byTask[t].length);
-    const maxCount = Math.max.apply(null, counts);
+    const useFull = !!(fullStats && fullStats.per_task);
+    const getCount = t => {
+      if (useFull && fullStats.per_task[t]) return fullStats.per_task[t].n_samples;
+      return (byTask[t] || []).length;
+    };
+    const counts = taskOrder.map(getCount);
+    const totalCount = counts.reduce((a, b) => a + b, 0);
+    const maxCount = Math.max.apply(null, counts) || 1;
     let taskHist = '<div class="histogram">';
     taskOrder.forEach((t, i) => {
       const c = counts[i];
       const wpct = (c / maxCount * 100).toFixed(2);
-      const pct = (c / allData.length * 100).toFixed(1);
+      const pct = totalCount ? (c / totalCount * 100).toFixed(1) : "0";
       const cat = TASKS[t].cat;
       const colorClass = cat === "backward" ? "orange" : cat === "forward" ? "purple" : "";
       const hl = t === state.task ? " current" : "";
@@ -1050,13 +1058,16 @@ video {
     });
     taskHist += '</div>';
 
-    // Right column: clip duration histogram for current task
+    // Right column: clip duration histogram — prefer full-dataset stats.
     let durHist = "";
-    if (!durations) {
-      durHist = '<p class="note"><code>file_durations.json</code> not found. Run <code>python compute_durations.py</code> to populate it.</p>';
-    } else {
+    let durSource = "subset";
+    let stats = null;
+    if (useFull && fullStats.per_task[state.task] && fullStats.per_task[state.task].stats) {
+      stats = fullStats.per_task[state.task].stats;
+      durSource = "full";
+    } else if (durations) {
       const durs = [];
-      byTask[state.task].forEach(s => {
+      (byTask[state.task] || []).forEach(s => {
         if (["REC","SSR","CRR"].indexOf(s.task) >= 0) {
           s.test_info.forEach((_, i) => {
             const d = clipDuration(s, i);
@@ -1067,46 +1078,57 @@ video {
           if (d != null) durs.push(d);
         }
       });
-      const stats = computeStats(durs);
-      if (!stats) {
-        durHist = '<p class="note">No duration data yet for this task.</p>';
-      } else {
-        const currentDur = clipDuration(currentSample, state.probeIdx);
-        const maxC = Math.max.apply(null, stats.counts) || 1;
-        const currentBucket = currentDur != null ? bucketOf(currentDur) : -1;
-        durHist = '<div class="stats-summary">' +
-          '<span>n<b>' + stats.n + '</b></span>' +
-          '<span>min<b>' + fmtDuration(stats.min) + '</b></span>' +
-          '<span>median<b>' + fmtDuration(stats.median) + '</b></span>' +
-          '<span>mean<b>' + fmtDuration(stats.mean) + '</b></span>' +
-          '<span>p90<b>' + fmtDuration(stats.p90) + '</b></span>' +
-          '<span>max<b>' + fmtDuration(stats.max) + '</b></span>' +
-          '<span>total<b>' + fmtDuration(stats.sum) + '</b></span>' +
-          (currentDur != null ? '<span style="color:var(--highlight);">current<b style="color:var(--highlight);">' + fmtDuration(currentDur) + '</b></span>' : "") +
-          '</div>';
-        durHist += '<div class="histogram">';
-        stats.counts.forEach((c, i) => {
-          const wpct = (c / maxC * 100).toFixed(2);
-          const spct = stats.n ? (c / stats.n * 100).toFixed(1) : "0";
-          const hl = (i === currentBucket) ? " current" : "";
-          durHist += '<div class="hist-row' + hl + '">' +
-            '<div class="hist-label">' + BUCKETS[i].label + '</div>' +
-            '<div class="hist-bar-wrap"><div class="hist-bar" style="width:' + wpct + '%"></div></div>' +
-            '<div class="hist-count">' + c + '<span class="hist-pct">(' + spct + '%)</span></div>' +
-            '</div>';
-        });
-        durHist += '</div>';
-      }
+      stats = computeStats(durs);
     }
 
-    // Global meta chips
-    const backTotal = ["EPM","ASI","HLD"].reduce((a,t)=>a+(byTask[t]||[]).length, 0);
-    const rtTotal = ["STU","OJR","ATR","ACR","OCR","FPD"].reduce((a,t)=>a+(byTask[t]||[]).length, 0);
-    const fwTotal = ["REC","SSR","CRR"].reduce((a,t)=>a+(byTask[t]||[]).length, 0);
+    if (!stats) {
+      if (!durations && !useFull) {
+        durHist = '<p class="note"><code>full_dataset_stats.json</code> and <code>file_durations.json</code> not found' +
+          (fullStatsError ? ' (' + escape(fullStatsError) + ')' : '') + '.</p>';
+      } else {
+        durHist = '<p class="note">No duration data for this task.</p>';
+      }
+    } else {
+      const currentDur = clipDuration(currentSample, state.probeIdx);
+      const maxC = Math.max.apply(null, stats.counts) || 1;
+      const currentBucket = currentDur != null ? bucketOf(currentDur) : -1;
+      const srcNote = durSource === "full"
+        ? '<span style="color:var(--muted);font-size:11px;margin-left:8px;">full dataset</span>'
+        : '<span style="color:var(--muted);font-size:11px;margin-left:8px;">subset only</span>';
+      durHist = '<div class="stats-summary">' +
+        '<span>n<b>' + stats.n + '</b>' + srcNote + '</span>' +
+        '<span>min<b>' + fmtDuration(stats.min) + '</b></span>' +
+        '<span>median<b>' + fmtDuration(stats.median) + '</b></span>' +
+        '<span>mean<b>' + fmtDuration(stats.mean) + '</b></span>' +
+        '<span>p90<b>' + fmtDuration(stats.p90) + '</b></span>' +
+        '<span>max<b>' + fmtDuration(stats.max) + '</b></span>' +
+        '<span>total<b>' + fmtDuration(stats.sum) + '</b></span>' +
+        (currentDur != null ? '<span style="color:var(--highlight);">current<b style="color:var(--highlight);">' + fmtDuration(currentDur) + '</b></span>' : "") +
+        '</div>';
+      durHist += '<div class="histogram">';
+      stats.counts.forEach((c, i) => {
+        const wpct = (c / maxC * 100).toFixed(2);
+        const spct = stats.n ? (c / stats.n * 100).toFixed(1) : "0";
+        const hl = (i === currentBucket) ? " current" : "";
+        durHist += '<div class="hist-row' + hl + '">' +
+          '<div class="hist-label">' + BUCKETS[i].label + '</div>' +
+          '<div class="hist-bar-wrap"><div class="hist-bar" style="width:' + wpct + '%"></div></div>' +
+          '<div class="hist-count">' + c + '<span class="hist-pct">(' + spct + '%)</span></div>' +
+          '</div>';
+      });
+      durHist += '</div>';
+    }
+
+    // Global meta chips — totals reflect full dataset when available.
+    const backTotal = ["EPM","ASI","HLD"].reduce((a,t)=>a+getCount(t), 0);
+    const rtTotal = ["STU","OJR","ATR","ACR","OCR","FPD"].reduce((a,t)=>a+getCount(t), 0);
+    const fwTotal = ["REC","SSR","CRR"].reduce((a,t)=>a+getCount(t), 0);
     const uniqueVideos = new Set(allData.map(d => d.video)).size;
+    const totalLabel = useFull ? "total samples (full)" : "total samples (subset)";
     const chips = '<div class="meta-chips">' +
-      '<span class="meta-chip">total samples<b>' + allData.length + '</b></span>' +
-      '<span class="meta-chip">unique source videos<b>' + uniqueVideos + '</b></span>' +
+      '<span class="meta-chip">' + totalLabel + '<b>' + totalCount + '</b></span>' +
+      (useFull ? '<span class="meta-chip">samples in viewer<b>' + allData.length + '</b></span>' : '') +
+      '<span class="meta-chip">unique source videos (subset)<b>' + uniqueVideos + '</b></span>' +
       '<span class="meta-chip">Backward<b>' + backTotal + '</b></span>' +
       '<span class="meta-chip">Realtime<b>' + rtTotal + '</b></span>' +
       '<span class="meta-chip">Forward<b>' + fwTotal + '</b></span>' +
@@ -1117,8 +1139,8 @@ video {
       '<h2>Dataset Statistics</h2>' +
       chips +
       '<div class="stats-grid">' +
-        '<div><h2>Samples per task (highlighted: current)</h2>' + taskHist + '</div>' +
-        '<div><h2>Clip duration distribution · ' + escape(state.task) + '</h2>' + durHist + '</div>' +
+        '<div><h2>Samples per task ' + (useFull ? '<span style="color:var(--muted);font-weight:400;font-size:12px;">(full dataset)</span>' : '<span style="color:var(--muted);font-weight:400;font-size:12px;">(subset)</span>') + '</h2>' + taskHist + '</div>' +
+        '<div><h2>Clip duration distribution &middot; ' + escape(state.task) + '</h2>' + durHist + '</div>' +
       '</div>';
   }
 
@@ -1166,6 +1188,12 @@ video {
       const dres = await fetch(DURATIONS_PATH);
       if (dres.ok) durations = await dres.json();
     } catch (e) { /* optional */ }
+
+    try {
+      const fres = await fetch("full_dataset_stats.json?v=" + Date.now(), { cache: "no-store" });
+      if (fres.ok) fullStats = await fres.json();
+      else fullStatsError = "HTTP " + fres.status + " " + fres.statusText;
+    } catch (e) { fullStatsError = String(e); }
   }
 
   async function init() {
