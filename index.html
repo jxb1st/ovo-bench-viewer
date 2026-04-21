@@ -1032,14 +1032,18 @@ video {
 
   // ---------------- Stats panel ----------------
   function renderStatsPanel(currentSample) {
-    // Left column: samples per task — prefer full-dataset counts when available.
+    if (!fullStats || !fullStats.per_task) {
+      $("stats-panel").innerHTML =
+        '<h2>Dataset Statistics</h2>' +
+        '<p class="note">full_dataset_stats.json failed to load' +
+        (fullStatsError ? ' (' + escape(fullStatsError) + ')' : '') +
+        '. Hard-refresh (Ctrl/Cmd+Shift+R) to retry.</p>';
+      return;
+    }
+
+    // Left column: samples per task — all from full dataset.
     const taskOrder = Object.keys(TASKS);
-    const useFull = !!(fullStats && fullStats.per_task);
-    const getCount = t => {
-      if (useFull && fullStats.per_task[t]) return fullStats.per_task[t].n_samples;
-      return (byTask[t] || []).length;
-    };
-    const counts = taskOrder.map(getCount);
+    const counts = taskOrder.map(t => (fullStats.per_task[t] || {}).n_samples || 0);
     const totalCount = counts.reduce((a, b) => a + b, 0);
     const maxCount = Math.max.apply(null, counts) || 1;
     let taskHist = '<div class="histogram">';
@@ -1058,51 +1062,25 @@ video {
     });
     taskHist += '</div>';
 
-    // Right column: clip duration histogram — prefer full-dataset stats.
+    // Right column: clip-duration histogram — full dataset for the current task.
     let durHist = "";
-    let durSource = "subset";
-    let stats = null;
-    if (useFull && fullStats.per_task[state.task] && fullStats.per_task[state.task].stats) {
-      stats = fullStats.per_task[state.task].stats;
-      durSource = "full";
-    } else if (durations) {
-      const durs = [];
-      (byTask[state.task] || []).forEach(s => {
-        if (["REC","SSR","CRR"].indexOf(s.task) >= 0) {
-          s.test_info.forEach((_, i) => {
-            const d = clipDuration(s, i);
-            if (d != null) durs.push(d);
-          });
-        } else {
-          const d = clipDuration(s, 0);
-          if (d != null) durs.push(d);
-        }
-      });
-      stats = computeStats(durs);
-    }
-
+    const ft = fullStats.per_task[state.task];
+    const stats = ft ? ft.stats : null;
     if (!stats) {
-      if (!durations && !useFull) {
-        durHist = '<p class="note"><code>full_dataset_stats.json</code> and <code>file_durations.json</code> not found' +
-          (fullStatsError ? ' (' + escape(fullStatsError) + ')' : '') + '.</p>';
-      } else {
-        durHist = '<p class="note">No duration data for this task.</p>';
-      }
+      durHist = '<p class="note">No full-dataset stats for task ' + escape(state.task) + '.</p>';
     } else {
       const currentDur = clipDuration(currentSample, state.probeIdx);
       const maxC = Math.max.apply(null, stats.counts) || 1;
       const currentBucket = currentDur != null ? bucketOf(currentDur) : -1;
-      const srcNote = durSource === "full"
-        ? '<span style="color:var(--muted);font-size:11px;margin-left:8px;">full dataset</span>'
-        : '<span style="color:var(--muted);font-size:11px;margin-left:8px;">subset only</span>';
       durHist = '<div class="stats-summary">' +
-        '<span>n<b>' + stats.n + '</b>' + srcNote + '</span>' +
+        '<span>n<b>' + stats.n + '</b></span>' +
         '<span>min<b>' + fmtDuration(stats.min) + '</b></span>' +
         '<span>median<b>' + fmtDuration(stats.median) + '</b></span>' +
         '<span>mean<b>' + fmtDuration(stats.mean) + '</b></span>' +
         '<span>p90<b>' + fmtDuration(stats.p90) + '</b></span>' +
         '<span>max<b>' + fmtDuration(stats.max) + '</b></span>' +
         '<span>total<b>' + fmtDuration(stats.sum) + '</b></span>' +
+        '<span>unique videos<b>' + (ft.n_unique_videos || 0) + '</b></span>' +
         (currentDur != null ? '<span style="color:var(--highlight);">current<b style="color:var(--highlight);">' + fmtDuration(currentDur) + '</b></span>' : "") +
         '</div>';
       durHist += '<div class="histogram">';
@@ -1119,27 +1097,23 @@ video {
       durHist += '</div>';
     }
 
-    // Global meta chips — totals reflect full dataset when available.
-    const backTotal = ["EPM","ASI","HLD"].reduce((a,t)=>a+getCount(t), 0);
-    const rtTotal = ["STU","OJR","ATR","ACR","OCR","FPD"].reduce((a,t)=>a+getCount(t), 0);
-    const fwTotal = ["REC","SSR","CRR"].reduce((a,t)=>a+getCount(t), 0);
-    const uniqueVideos = new Set(allData.map(d => d.video)).size;
-    const totalLabel = useFull ? "total samples (full)" : "total samples (subset)";
+    // Global meta chips — all full-dataset.
+    const overall = fullStats.overall || {};
+    const catTot = overall.category_totals || {};
     const chips = '<div class="meta-chips">' +
-      '<span class="meta-chip">' + totalLabel + '<b>' + totalCount + '</b></span>' +
-      (useFull ? '<span class="meta-chip">samples in viewer<b>' + allData.length + '</b></span>' : '') +
-      '<span class="meta-chip">unique source videos (subset)<b>' + uniqueVideos + '</b></span>' +
-      '<span class="meta-chip">Backward<b>' + backTotal + '</b></span>' +
-      '<span class="meta-chip">Realtime<b>' + rtTotal + '</b></span>' +
-      '<span class="meta-chip">Forward<b>' + fwTotal + '</b></span>' +
+      '<span class="meta-chip">total samples<b>' + (overall.total_samples || totalCount) + '</b></span>' +
+      '<span class="meta-chip">unique source videos<b>' + (overall.n_unique_videos || 0) + '</b></span>' +
+      '<span class="meta-chip">Backward<b>' + (catTot.backward || 0) + '</b></span>' +
+      '<span class="meta-chip">Realtime<b>' + (catTot.realtime || 0) + '</b></span>' +
+      '<span class="meta-chip">Forward<b>' + (catTot.forward || 0) + '</b></span>' +
       '<span class="meta-chip">12 task types</span>' +
       '</div>';
 
     $("stats-panel").innerHTML =
-      '<h2>Dataset Statistics</h2>' +
+      '<h2>Dataset Statistics <span style="color:var(--muted);font-weight:400;font-size:12px;">(full benchmark, not subset)</span></h2>' +
       chips +
       '<div class="stats-grid">' +
-        '<div><h2>Samples per task ' + (useFull ? '<span style="color:var(--muted);font-weight:400;font-size:12px;">(full dataset)</span>' : '<span style="color:var(--muted);font-weight:400;font-size:12px;">(subset)</span>') + '</h2>' + taskHist + '</div>' +
+        '<div><h2>Samples per task</h2>' + taskHist + '</div>' +
         '<div><h2>Clip duration distribution &middot; ' + escape(state.task) + '</h2>' + durHist + '</div>' +
       '</div>';
   }

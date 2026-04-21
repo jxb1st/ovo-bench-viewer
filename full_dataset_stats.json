@@ -46,6 +46,7 @@
   "per_task": {
     "ACR": {
       "unit": "per-sample clip",
+      "category": "realtime",
       "stats": {
         "n": 109,
         "min": 4.0,
@@ -67,10 +68,12 @@
           0
         ]
       },
-      "n_samples": 109
+      "n_samples": 109,
+      "n_unique_videos": 40
     },
     "ASI": {
       "unit": "per-sample clip",
+      "category": "backward",
       "stats": {
         "n": 148,
         "min": 2.01,
@@ -92,10 +95,12 @@
           0
         ]
       },
-      "n_samples": 148
+      "n_samples": 148,
+      "n_unique_videos": 148
     },
     "ATR": {
       "unit": "per-sample clip",
+      "category": "realtime",
       "stats": {
         "n": 116,
         "min": 3.0,
@@ -117,10 +122,12 @@
           0
         ]
       },
-      "n_samples": 116
+      "n_samples": 116,
+      "n_unique_videos": 71
     },
     "CRR": {
       "unit": "per-sample clip-sum",
+      "category": "forward",
       "stats": {
         "n": 48,
         "min": 224.06,
@@ -142,10 +149,12 @@
           37
         ]
       },
-      "n_samples": 48
+      "n_samples": 48,
+      "n_unique_videos": 10
     },
     "EPM": {
       "unit": "per-sample clip",
+      "category": "backward",
       "stats": {
         "n": 297,
         "min": 2.0,
@@ -167,10 +176,12 @@
           0
         ]
       },
-      "n_samples": 297
+      "n_samples": 297,
+      "n_unique_videos": 70
     },
     "FPD": {
       "unit": "per-sample clip",
+      "category": "realtime",
       "stats": {
         "n": 101,
         "min": 1.0,
@@ -192,10 +203,12 @@
           0
         ]
       },
-      "n_samples": 101
+      "n_samples": 101,
+      "n_unique_videos": 40
     },
     "HLD": {
       "unit": "per-sample clip",
+      "category": "backward",
       "stats": {
         "n": 186,
         "min": 5.0,
@@ -217,10 +230,12 @@
           0
         ]
       },
-      "n_samples": 186
+      "n_samples": 186,
+      "n_unique_videos": 103
     },
     "OCR": {
       "unit": "per-sample clip",
+      "category": "realtime",
       "stats": {
         "n": 149,
         "min": 12.0,
@@ -242,10 +257,12 @@
           0
         ]
       },
-      "n_samples": 149
+      "n_samples": 149,
+      "n_unique_videos": 49
     },
     "OJR": {
       "unit": "per-sample clip",
+      "category": "realtime",
       "stats": {
         "n": 184,
         "min": 5.0,
@@ -267,10 +284,12 @@
           0
         ]
       },
-      "n_samples": 184
+      "n_samples": 184,
+      "n_unique_videos": 70
     },
     "REC": {
       "unit": "per-sample clip-sum",
+      "category": "forward",
       "stats": {
         "n": 82,
         "min": 27.03,
@@ -292,10 +311,12 @@
           7
         ]
       },
-      "n_samples": 82
+      "n_samples": 82,
+      "n_unique_videos": 82
     },
     "SSR": {
       "unit": "per-sample clip-sum",
+      "category": "forward",
       "stats": {
         "n": 42,
         "min": 376.14,
@@ -317,10 +338,12 @@
           13
         ]
       },
-      "n_samples": 42
+      "n_samples": 42,
+      "n_unique_videos": 42
     },
     "STU": {
       "unit": "per-sample clip",
+      "category": "realtime",
       "stats": {
         "n": 178,
         "min": 5.0,
@@ -342,12 +365,19 @@
           0
         ]
       },
-      "n_samples": 178
+      "n_samples": 178,
+      "n_unique_videos": 58
     }
   },
   "overall": {
     "total_samples": 1640,
     "total_tasks": 12,
+    "n_unique_videos": 644,
+    "category_totals": {
+      "backward": 631,
+      "realtime": 837,
+      "forward": 172
+    },
     "stats": {
       "n": 1640,
       "min": 1.0,
